@@ -10,6 +10,13 @@ function isMostlyNonHebrew(text) {
     return (hebChars.length / text.length) < 0.1;
 }
 
+function isOnlyLink(text) {
+    const trimmed = text.trim();
+    const urlPattern = /^(https?:\/\/)?[\w\-]+(\.[\w\-]+)+[/#?]?.*$/i;
+    return urlPattern.test(trimmed);
+}
+
+
 async function translateToHebrew(text) {
     const prompt = `Translate the following message to Hebrew:\n\n"${text}"`;
     const response = await openai.chat.completions.create({
@@ -38,6 +45,8 @@ bot.on('message', async (ctx) => {
     }
 
     if (!text || text.length < 5) return;
+
+    if (isOnlyLink(text)) return;
 
     if (isMostlyNonHebrew(text)) {
         try {
