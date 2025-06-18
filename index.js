@@ -16,6 +16,23 @@ function isOnlyLink(text) {
     return urlPattern.test(trimmed);
 }
 
+function isEnglish(text) {
+    // Check if >80% of the characters are A-Z or common English punctuation
+    const enChars = text.match(/[a-zA-Z]/g) || [];
+    return (enChars.length / text.length) > 0.8;
+}
+
+function isMostlyEmoji(text) {
+    const emojiRegex = /\p{Emoji}/gu;
+    const emojis = (text.match(emojiRegex) || []).length;
+    return emojis / text.length > 0.7;
+}
+
+function isTelegramCommand(text) {
+    return text.trim().startsWith('/');
+}
+
+
 
 async function translateToHebrew(text) {
     const prompt = `Translate the following message to Hebrew:\n\n"${text}"`;
@@ -32,32 +49,24 @@ bot.on('message', async (ctx) => {
     const chatType = ctx.chat.type;
     if (chatType !== 'group' && chatType !== 'supergroup') return;
 
-    let text = null;
-
-    // Handle text messages
-    if (ctx.message.text) {
-        text = ctx.message.text;
-    }
-
-    // Handle captions (photo, video, etc.)
-    else if (ctx.message.caption) {
-        text = ctx.message.caption;
-    }
-
+    const text = ctx.message.text || ctx.message.caption;
     if (!text || text.length < 5) return;
 
+    if (isTelegramCommand(text)) return;
     if (isOnlyLink(text)) return;
+    if (isMostlyEmoji(text)) return;
+    if (isEnglish(text)) return;
+    if (!isMostlyNonHebrew(text)) return;
 
-    if (isMostlyNonHebrew(text)) {
-        try {
-            const translated = await translateToHebrew(text);
-            await ctx.reply(`🔄 תרגום לעברית:\n${translated}`, {
-                reply_to_message_id: ctx.message.message_id
-            });
-        } catch (err) {
-            console.error('Translation failed:', err.message);
-        }
+    try {
+        const translated = await translateToHebrew(text);
+        await ctx.reply(`🔄 תרגום לעברית:\n${translated}`, {
+            reply_to_message_id: ctx.message.message_id
+        });
+    } catch (err) {
+        console.error('Translation failed:', err.message);
     }
 });
+
 
 bot.launch();
